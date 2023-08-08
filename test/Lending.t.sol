@@ -3,18 +3,18 @@ pragma solidity ^0.8.13;
 
 import {Test, console} from "forge-std/Test.sol";
 import "../src/Lending.sol";
-import {MyERC20} from "../src/MockUSDT.sol";
+import {MyERC20} from "./mock/MockUSDT.sol";
 import {DeployLendingScript} from "../script/DeployLending.s.sol";
 
-contract LendingTest is Test, MyERC20{
+contract LendingTest is Test{
     USDTLending public lending;
-    address USER = makeAddr("user"); //allows you to create a fake user. (Only in foundry!)
+    address alice = vm.addr(0x1); //allows you to create a fake user. (Only in foundry!)
+    // MyERC20 test_usdt;
 
     function setUp() public {
         DeployLendingScript script = new DeployLendingScript();
-        console.log("Deploying lending contract...");
         lending = script.run();
-        console.log("Lending contract deployed at: ", address(lending));
+        // test_usdt = new MyERC20("Test USDT", "TUSDT");
     }
 
     function testInitialBalance() public {
@@ -28,13 +28,30 @@ contract LendingTest is Test, MyERC20{
         lending.borrow(100); //lending doesn't have enough USDT
     }
 
-    function testFundContract() public {
-        //vm.prank can be used to set the account for the next line
-        vm.prank(USER); //pretend to be the user
-        // vm.prank(address());
-        console.log("User balance: ", lending.checkContractBalance());
-        lending.fund(1000); //fund the contract with 1000 USDT
+
+    function testBorrow() public {
+        vm.prank(alice);
+        lending.borrow(100);
+        assertEq(lending.checkContractBalance(), 9999999999900);
+    }
+
+    function testRepay() public {
+        //add funds to alice account
+        MyERC20 usdt = MyERC20(lending.getUSDTAddress());
+        usdt.mint(alice, 10);
+        
+        vm.startPrank(alice);
+        console.log("Before Borrow",lending.checkContractBalance());
+        lending.borrow(100);
+        console.log("After Borrow", lending.checkContractBalance());
+        console.log(lending.getDebts(alice));
+        lending.repay();
+        console.log(lending.getDebts(alice));
+        console.log(lending.checkContractBalance());
+        assertEq(lending.checkContractBalance(), 9_999_900);
+        vm.stopPrank();
 
     }
+
 
 }

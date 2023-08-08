@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import {Script} from "forge-std/Script.sol";
+import {MyERC20} from "../test/mock/MockUSDT.sol";
 
 contract HelperConfig is Script{
 
@@ -10,6 +11,8 @@ contract HelperConfig is Script{
     struct NetworkConfig{
         address usdt;    //USDT address
     }
+
+    event HelperConfig__CreatedMockUSDT(address mockusdt);
 
     constructor(){
         if(block.chainid == 1){
@@ -26,8 +29,20 @@ contract HelperConfig is Script{
         return mainnetConfig;
     }
 
-    function getAnvilConfig() public pure returns (NetworkConfig memory){
-        //usdt anvil
+    function getAnvilConfig() public returns (NetworkConfig memory){
+        // if(activeNetworkConfig.usdt != address(0)){
+        //     return activeNetworkConfig;
+        // }
+        vm.startBroadcast();
+        MyERC20 usdt = new MyERC20("Test USDT", "TUSDT");
+        vm.stopBroadcast();
+        emit HelperConfig__CreatedMockUSDT(address(usdt));
+
+        NetworkConfig memory anvilNetworkConfig = NetworkConfig({
+            usdt: address(usdt)
+        });
+        return anvilNetworkConfig;
+
     }
 
 }

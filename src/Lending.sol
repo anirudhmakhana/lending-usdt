@@ -9,24 +9,18 @@ interface IUSDT {
 }
 
 contract USDTLending {
-    address public owner; //this is the owner of the contract, which I will use to fund the contract (only for testing purposes)
+
     IUSDT public USDT;
     mapping(address => uint256) public debts;
+    // uint256 public constant PRECISION = 6;
+    uint256 private interestPercentage  = 10;
 
     constructor(address _usdt) {
-        owner = msg.sender;
         USDT = IUSDT(_usdt);
     }
 
-    // // Modifier to require that the caller is the owner
-    // modifier onlyOwner() {
-    //     require(msg.sender == owner, "Only the owner can call this function.");
-    //     _;
-    // }
-
-    // Function to allow the owner to fund the contract
-    function fund(uint256 amount) external {
-        require(USDT.transferFrom(msg.sender, address(this), amount), "Transfer failed.");
+    function fund(uint256 amount, address _sender) external {
+        require(USDT.transferFrom(_sender, address(this), amount), "Transfer failed.");
     }
 
     function borrow(uint256 amount) external {
@@ -43,13 +37,15 @@ contract USDTLending {
         uint256 debt = debts[msg.sender];
         require(debt > 0, "You don't have any debt.");
 
-        // Calculate repayment amount with 10% interest
-        uint256 repaymentAmount = debt + (debt / 10);
+
+        // Calculate repayment amount with 10% interest (1000 basis points)
+        uint256 interest = calculate(debt, 1000);
+        uint256 repaymentAmount = debt + interest;
 
         require(USDT.balanceOf(msg.sender) >= repaymentAmount, "Not enough USDT to repay.");
 
-        // Transfer USDT from borrower to this contract
-        require(USDT.transferFrom(msg.sender, address(this), repaymentAmount), "Transfer failed.");
+        // The USDT interface should be updated to have the transfer function
+        require(USDT.transfer(address(this), repaymentAmount), "Transfer failed.");
 
         // Clear the debt
         debts[msg.sender] = 0;
@@ -64,14 +60,16 @@ contract USDTLending {
         return USDT.balanceOf(address(this));
     }
 
-    /**
-     * Getters functions 
-     */
-    function getOwner() external view returns (address) {
-        return owner;
-    }
-
     function getDebts(address borrower) external view returns (uint256) {
         return debts[borrower];
+    }
+
+    function getUSDTAddress() external view returns (address) {
+        return address(USDT);
+    }
+
+    function calculate(uint256 amount, uint256 bps) public pure returns (uint256) {
+        require((amount * bps) >= 10_000);
+        return amount * bps / 10_000;
     }
 }
